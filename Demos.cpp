@@ -32,7 +32,7 @@ void Square(GeneralNode<TX> &node) {
 
 // Predicado generico para FirstThat/call: true si el valor del nodo es
 // mayor que 'threshold'. Generico en Node y T para servir tanto a
-// Vector<VectorAscTraits<TX>> (int) como a Vector<VectorAscTraits<string>>.
+// Vector<TX> (int) como a Vector<string>.
 template <typename Node, typename T>
 bool IsGreaterThan(Node &node, T threshold) {
     return node.getValue() > threshold;
@@ -51,7 +51,7 @@ template <typename Container>
 void InsertElements(Container &container,
                      const vector<pair<typename Container::value_type, Ref>> &values) {
     for (const auto &v : values)
-        container.push_back(v.first, v.second);
+        container.push(v.first, v.second);
 }
 
 template <typename Container>
@@ -147,21 +147,21 @@ void DemoVector() {
 
     // Cada elemento es una pareja (valor, ref) que se guarda en un Node;
     // el constructor initializer_list arma el Vector inicial de una vez
-    Vector<VectorAscTraits<TX>> vec({{0, 10}, {1, 11}, {2, 12}, {3, 13}, {4, 14}});
+    Vector<TX> vec({{0, 10}, {1, 11}, {2, 12}, {3, 13}, {4, 14}});
     TestContainer(vec, {{5, 15}, {6, 16}, {7, 17}, {8, 18}, {9, 19}}, "vector.txt");
     TestTraversal(vec);
 
     ofstream("vector_str.txt", ios::trunc).close();
-    Vector<VectorAscTraits<string>> strVec;
+    Vector<string> strVec;
     TestContainer(strVec, {{"Hello", 1}, {"World", 2}}, "vector_str.txt");
     TestTraversal(strVec);
 }
 
 // Insertamos muchos elementos (generados en un loop, no a mano)
 // concurrentemente y comparamos cuantos deberian haber entrado contra
-// cuantos entraron realmente. Si push_back no estuviera sincronizado
+// cuantos entraron realmente. Si pushBack no estuviera sincronizado
 // (sin el mutex/lock_guard actual) esto perderia inserciones o crashearia;
-// con el mutex protegiendo push_back/resize, deberia dar siempre 0 perdidas.
+// con el mutex protegiendo pushBack/resize, deberia dar siempre 0 perdidas.
 void DemoRaceCondition() {
     const size_t N = 200000;
 
@@ -169,7 +169,7 @@ void DemoRaceCondition() {
     for (size_t i = 0; i < N; ++i)
         values[i] = {static_cast<TX>(i), static_cast<Ref>(i)};
 
-    Vector<VectorAscTraits<TX>> vec;
+    Vector<TX> vec;
 
     // Insercion concurrente: NThreads workers insertando en paralelo sobre
     // el mismo Vector, cada uno con un subconjunto entrelazado (stride)
@@ -178,7 +178,7 @@ void DemoRaceCondition() {
     for (int t = 0; t < NThreads; ++t) {
         workers.emplace_back([&vec, &values, n, t](){
             for (size_t i = t; i < n; i += NThreads)
-                vec.push_back(values[i].first, values[i].second);
+                vec.pushBack(values[i].first, values[i].second);
         });
     }
     for (auto &worker : workers)
@@ -196,9 +196,9 @@ void DemoRaceCondition() {
          << ", suma obtenida = " << actualSum << endl;
 
     if (vec.size() != N || actualSum != expectedSum)
-        cout << "  *** Race condition detectada: se perdieron inserciones (push_back / resize sin sincronizar) ***" << endl;
+        cout << "  *** Race condition detectada: se perdieron inserciones (pushBack / resize sin sincronizar) ***" << endl;
     else
-        cout << "  No se perdio ningun elemento: el mutex de push_back/resize "
+        cout << "  No se perdio ningun elemento: el mutex de pushBack/resize "
              << "sincroniza correctamente las inserciones concurrentes" << endl;
 }
 
@@ -217,7 +217,7 @@ void DemoLinkedList()
 
     auto elements = std::vector<pair<TX, Ref>>({{0, 10}, {1, 11}, {2, 12}, {3, 13}, {4, 14}});
     for(auto& e : elements)
-        list.push_back(e.first, e.second);
+        list.pushBack(e.first, e.second);
 
     // Pruebas de insert
     cout <<"-- PRUEBAS DE INSERT --\n";
@@ -237,8 +237,8 @@ void DemoLinkedList()
     cout <<"-- PRUEBAS DE CLEAR --\n";
     list.clear();
     cout << "LinkedList luego de usar clear:\n\t" << list << endl;
-    list.push_back(10, 2);
-    cout << "LinkedList luego de un nuevo push_back:\n\t" << list << endl;
+    list.pushBack(10, 2);
+    cout << "LinkedList luego de un nuevo pushBack:\n\t" << list << endl;
 
     // Prueba de lectura
     cout <<"-- PRUEBA DE LECTURA --\n";
@@ -264,7 +264,7 @@ void DemoCircularLinkedList()
 
     auto elements = std::vector<pair<TX, Ref>>({{0, 10}, {1, 11}, {2, 12}, {3, 13}, {4, 14}});
     for(auto& e : elements)
-        list.push_back(e.first, e.second);
+        list.pushBack(e.first, e.second);
     cout << "CircularLinkedList luego de hacer 5 pushback:\n\t" << list << endl;
     
     // Pruebas de insert
@@ -285,7 +285,7 @@ void DemoCircularLinkedList()
     cout <<"-- PRUEBAS DE CLEAR Y REINSERCION --\n";
     list.clear();
     cout << "CircularLinkedList luego de usar clear:\n\t" << list << endl;
-    list.push_back(10, 2);
+    list.pushBack(10, 2);
     cout << "CircularLinkedList luego de reinsertar:\n\t" << list << endl;
 
     // Prueba de lectura
@@ -326,8 +326,8 @@ void DemoDoublyLinkedList()
     cout << "-- PRUEBAS DE CLEAR Y REINSERCION --\n";
     list.clear();
     cout << "DoublyLinkedList luego de clear:\n\t" << list << endl;
-    list.push_back(10, 2);
-    list.push_back(5, 1);
+    list.pushBack(10, 2);
+    list.pushBack(5, 1);
     cout << "DoublyLinkedList luego de reinsertar:\n\t" << list << endl;
 
     cout << "-- PRUEBA DE LECTURA --\n";
@@ -369,8 +369,8 @@ void DemoCircularDoublyLinkedList()
     cout << "-- PRUEBAS DE CLEAR Y REINSERCION --\n";
     list.clear();
     cout << "CircularDoublyLinkedList luego de clear:\n\t" << list << endl;
-    list.push_back(10, 2);
-    list.push_back(5, 1);
+    list.pushBack(10, 2);
+    list.pushBack(5, 1);
     cout << "CircularDoublyLinkedList despues de reinsertar:\n\t" << list << endl;
 
     cout << "-- PRUEBA DE LECTURA --\n";
@@ -392,7 +392,7 @@ void DemoHeap() {
     ofstream("minheap.txt", ios::trunc).close();
     ofstream("maxheap.txt", ios::trunc).close();
 
-    // Pruebas de push_back
+    // Pruebas de pushBack
     cout << "-- PRUEBAS DE PUSH_BACK (MIN HEAP) --\n";
     IntMinHeap minHeap;
     TestContainer(minHeap, {{5, 15}, {1, 11}, {8, 18}, {3, 13},
@@ -449,9 +449,9 @@ void DemoHeap() {
 
     cout << "-- PRUEBAS DE REINSERCION --\n";
 
-    minHeap.push_back(10, 2);
-    minHeap.push_back(4, 1);
-    minHeap.push_back(15, 3);
+    minHeap.push(10, 2);
+    minHeap.push(4, 1);
+    minHeap.push(15, 3);
 
     cout << "MinHeap luego de reinsertar:\n\t" << minHeap << endl;
 
@@ -534,9 +534,9 @@ void DemoBinaryTree() {
 
     cout << "-- PRUEBAS DE REINSERCION --\n";
 
-    ascTree.insert(5, 15);
-    ascTree.insert(2, 12);
-    ascTree.insert(12, 22);
+    ascTree.push(5, 15);
+    ascTree.push(2, 12);
+    ascTree.push(12, 22);
 
     cout << "AscTree luego de 3 inserts:\n\t" << ascTree << endl;
 
@@ -551,7 +551,7 @@ void DemoBinaryTree() {
     cout << "Arbol original:\n" << ascTree << endl;
     cout << "Arbol copiado:\n" << copiedTree << endl;
 
-    copiedTree.insert(20, 30);
+    copiedTree.push(20, 30);
 
     cout << "Arbol copiado luego de insertar 20:\n"
          << copiedTree << endl;
@@ -563,18 +563,15 @@ void DemoBinaryTree() {
     IntAscTree movedTree(std::move(copiedTree));
 
     cout << "Arbol movido:\n" << movedTree << endl;
-    cout << "Tamanio del arbol origen: " << copiedTree.size() << endl;
 
     cout << "-- PRUEBAS DE CLEAR --\n";
 
     ascTree.clear();
 
     cout << "AscTree luego de clear:\n" << ascTree << endl;
-    cout << "Tamanio: " << ascTree.size() << endl;
-
-    ascTree.insert(10, 2);
-    ascTree.insert(5, 1);
-    ascTree.insert(15, 3);
+    ascTree.push(10, 2);
+    ascTree.push(5, 1);
+    ascTree.push(15, 3);
 
     cout << "AscTree luego de reinsertar:\n"
          << ascTree << endl;
@@ -597,7 +594,7 @@ void DemoBinaryTree() {
 
     IntAscTree emptyTree;
 
-    cout << "Arbol vacio, size = " << emptyTree.size() << endl;
+    cout << "Arbol vacio:" << emptyTree << endl;
     cout << "begin() == end(): "
          << (emptyTree.begin() == emptyTree.end()) << endl;
 }

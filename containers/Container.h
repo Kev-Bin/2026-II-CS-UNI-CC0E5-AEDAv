@@ -1,5 +1,5 @@
-#ifndef __CONTAINER__
-#define __CONTAINER__
+#ifndef __CONTAINER_H__
+#define __CONTAINER_H__
 
 #include <Utility>
 #include <mutex>
@@ -19,58 +19,83 @@ struct AscendingTraits : public CompareTraits<T, std::less<T>> {};
 template <typename T> 
 struct DescendingTraits : public CompareTraits<T, std::greater<T>> {};
 
-template <typename Traits>
+template <typename Traits, typename Derived>
 class Container;
 
-template <typename Traits>
-std::ostream& operator<<(std::ostream& os, const Container<Traits>& container);
+template <typename Traits, typename Derived>
+std::ostream& operator<<(std::ostream&, const Container<Traits, Derived>&);
 
-template <typename Traits>
-std::istream& operator>>(std::istream& is, Container<Traits>& container);
+template <typename Traits, typename Derived>
+std::istream& operator>>(std::istream&, Container<Traits, Derived>&);
 
-template <typename Traits>
-class Container : public ForwardIterable<Traits> {
+template <typename Traits, typename Derived>
+class Container : 
+    public ForwardIterable<Traits> {
+
 public:
+
     using value_type            = typename Traits::value_type;
     using Node                  = typename Traits::Node;
     using Compare               = typename Traits::Compare;
     using Delim                 = typename Node::Delim;
-    using NodePtr               = Node*;
+    
+    using ForwardIterator       = typename ForwardIterable<Traits>::ForwardIterator;
+    using ConstForwardIterator  = typename ForwardIterable<Traits>::ConstForwardIterator;
 
 protected:
-    mutable std::mutex m_mutex;
-    size_t m_size = 0;
-    Compare m_comp;
 
-    virtual void clearUnlocked()                            = 0;
-    virtual void push_backUnlocked(const value_type&, Ref)  = 0;
-    virtual void push_backUnlocked(NodePtr)                 = 0;
-    
-public:
-    Container() = default;
+    mutable std::mutex  m_mutex;
+    Compare             m_comp;
 
-    Container(const Container& another) { *this = another; }
-    
-    virtual ~Container() = default ;
+    virtual void internalPush(const value_type&, Ref)   = 0;
+    virtual void internalRemove(const value_type&, Ref) = 0;
+    virtual void internalClear()                        = 0;
 
-    virtual size_t size() const { return m_size; } 
-    
-    bool empty() const  { return size() == 0; }
+    virtual Container& internalCopy(const Derived& another) {
+        if (this == &another) 
+            return *this;
+        
+        internalClear();
 
-    void push_back(const value_type& v, Ref r) {
-        scoped_lock lock(m_mutex);
-        push_backUnlocked(v, r);
+        m_comp = another.getComp();
+        
+        return *this;
     }
 
-    void clear() {
+public:
+
+    Container()                 = default;
+    virtual ~Container()        = default;
+    virtual bool empty() const  = 0;
+
+    Compare getComp() const { return m_comp; }
+    
+    virtual void push(const value_type& value, Ref ref) {
         scoped_lock lock(m_mutex);
-        clearUnlocked();
-    };
+        internalPush(value, ref); 
+    }
 
-    friend std::ostream& operator<< <Traits>(std::ostream& os,const Container& container);
-    friend std::istream& operator>> <Traits>(std::istream& is, Container& container);
+    virtual void remove(const value_type& value, Ref ref) {
+        scoped_lock lock(m_mutex);
+        internalRemove(value, ref); 
+    }
 
-    std::ostream& write(std::ostream& os) { return os << *this; }
-    std::istream& read(std::istream& is) { return is >> *this; }
+    void clear() { 
+        scoped_lock lock(m_mutex);
+        internalClear(); 
+    }
+    
+    std::ostream&   write(std::ostream& os)   { return os << *this; }
+    std::istream&   read(std::istream& is)    { return is >> *this; }
+    Derived&        copy(const Derived& other){ return *this = other; }
+
+    friend std::ostream& operator<< <Traits, Derived>(std::ostream&, const Container<Traits, Derived>&);
+    friend std::istream& operator>> <Traits, Derived>(std::istream&, Container<Traits, Derived>&);
+    
+    Derived& operator=(const Derived& another) {
+        scoped_lock lock(m_mutex); 
+        internalCopy(another); 
+        return *this;
+    }
 };
-#endif // __CONTAINER__
+#endif // __CONTAINER_H__

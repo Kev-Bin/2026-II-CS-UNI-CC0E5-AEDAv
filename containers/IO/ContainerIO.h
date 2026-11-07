@@ -4,11 +4,10 @@
 #include "Container.h"
 #include <istream>
 #include <ostream>
-#include <mutex>
 
-template <typename Traits>
-std::ostream& operator<<(std::ostream& os, const Container<Traits>& container) {
-    using Node = typename Container<Traits>::Node;
+template <typename Traits, typename Derived>
+std::ostream& operator<<(std::ostream& os, const Container<Traits, Derived>& container) {
+    using Node = typename Container<Traits, Derived>::Node;
 
     std::scoped_lock lock(container.m_mutex);
 
@@ -24,10 +23,10 @@ std::ostream& operator<<(std::ostream& os, const Container<Traits>& container) {
     return os << ']';
 }
 
-template <typename Traits>
-std::istream& operator>>(std::istream& is, Container<Traits>& container) {
-    using Node  = typename Container<Traits>::Node;
-    using Delim = typename Container<Traits>::Delim;
+template <typename Traits, typename Derived>
+std::istream& operator>>(std::istream& is, Container<Traits, Derived>& container) {
+    using Node  = typename Container<Traits, Derived>::Node;
+    using Delim = typename Container<Traits, Derived>::Delim;
 
     Node node;
     Delim d;
@@ -35,12 +34,12 @@ std::istream& operator>>(std::istream& is, Container<Traits>& container) {
     is >> std::ws >> d;
     if (d != '[') return is;
     std::scoped_lock lock(container.m_mutex);
-    container.clearUnlocked();
+    container.internalClear();
     is >> std::ws;
     if (is.peek() == ']') return is >> d;
 
     while (is >> node) {
-        container.push_backUnlocked(node.getValue(), node.getRef());
+        container.internalPush(node.getValue(), node.getRef());
         is >> std::ws >> d;
         if (d == ']') break;
     }
