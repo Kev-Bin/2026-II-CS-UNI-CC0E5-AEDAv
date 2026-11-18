@@ -53,12 +53,13 @@ protected:
     }
 
     void internalRemove(const value_type& value, Ref ref) override {
-        scoped_lock lock(m_mutex);
-
-        if (m_size == 0) 
+        if (m_size == 0)
             throw std::out_of_range("Heap vacio");
         
         size_t i = m_data.indexOf(value, ref);
+
+        if (i == m_size)      // no existe: no hace nada
+            return;
 
         std::swap(m_data[i], m_data[m_size - 1]);
         m_data.pop_back();
@@ -71,12 +72,10 @@ protected:
         //ya que por la propia naturaleza de la funcion, no se desordenara el heap
     }
         
-    void internalPush(const value_type &value, Ref ref) { internalPush(new Node(value, ref)); }
-
-    void internalPush(Node* nodePtr) {
-        m_data.pushBack(nodePtr->getValue(),nodePtr->getRef());
-        heapifyUp(m_size);
+    void internalPush(const value_type &value, Ref ref) override {
+        m_data.pushBack(value, ref);
         ++m_size;
+        heapifyUp(m_size - 1);
     }
 
     void heapifyUp(size_t index) {

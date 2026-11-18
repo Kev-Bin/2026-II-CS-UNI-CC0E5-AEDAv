@@ -1,9 +1,12 @@
 #ifndef __TYPES_H__
 #define __TYPES_H__
 
+#include <cstddef> // std::size_t
+
 using TX    = int;
 using Ref   = long long;
 using TID   = unsigned long long;
+using MerkleHash = std::size_t; // mismo tipo que devuelve std::hash
 
 // Crear el tipo CW como char si estamos en architectura de 16 bits
 // pero como wchar_t si estamos en 32 o 64 bits. Esto permite que el mismo

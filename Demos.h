@@ -11,4 +11,5 @@ void DemoCircularDoublyLinkedList();
 void DemoHeap();
 void DemoBinaryTree();
 void DemoHashTable();
+void DemoMerkleTree();
 #endif // __DEMOS_H__

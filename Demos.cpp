@@ -16,6 +16,7 @@
 #include "containers/containers/Trees/BinaryTree.h"
 #include "containers/containers/Trees/AVLTree.h"
 #include "containers/containers/Trees/HashTable.h"
+#include "containers/containers/Trees/MerkleTree.h"
 #include "Demos.h"
 using namespace std;
 
@@ -569,11 +570,10 @@ void DemoSearchTree(
     TestTreeLifecycle(ascTree, treeName, ascFilename);
 }
 
-// Pruebas comunes a todo contenedor basado en arbol: copy/move constructor,
-// clear + reinsercion, lectura desde archivo y contenedor vacio.
-// 'tree' se modifica (queda con los elementos reinsertados tras clear()).
+// Copy/move constructor y clear + reinsercion. Sirve para cualquier arbol,
+// incluido el MerkleTree. 'tree' queda con los elementos reinsertados.
 template <typename Tree>
-void TestTreeLifecycle(Tree& tree, const string& treeName, const string& filename) {
+void TestTreeCopyAndClear(Tree& tree, const string& treeName) {
 
     // --------------------------------------------------
     // COPY CONSTRUCTOR
@@ -620,6 +620,26 @@ void TestTreeLifecycle(Tree& tree, const string& treeName, const string& filenam
 
     cout << treeName << " luego de reinsertar:\n"
          << tree << endl;
+}
+
+template <typename Tree>
+void TestEmptyTree() {
+    cout << "-- PRUEBAS DE ARBOL VACIO --\n";
+
+    Tree emptyTree;
+
+    cout << "Arbol vacio:\n" << emptyTree << endl;
+
+    cout << "begin() == end(): "
+         << (emptyTree.begin() == emptyTree.end()) << endl;
+}
+
+// Pruebas comunes a los arboles que se pueden reconstruir desde archivo:
+// copy/move, clear, lectura desde archivo y arbol vacio.
+template <typename Tree>
+void TestTreeLifecycle(Tree& tree, const string& treeName, const string& filename) {
+
+    TestTreeCopyAndClear(tree, treeName);
 
     // --------------------------------------------------
     // FILE READING
@@ -639,18 +659,7 @@ void TestTreeLifecycle(Tree& tree, const string& treeName, const string& filenam
     cout << "-- RECORRIDOS DEL ARBOL LEIDO --\n";
     TestTraversal(loadedTree);
 
-    // --------------------------------------------------
-    // EMPTY TREE
-    // --------------------------------------------------
-
-    cout << "-- PRUEBAS DE ARBOL VACIO --\n";
-
-    Tree emptyTree;
-
-    cout << "Arbol vacio:\n" << emptyTree << endl;
-
-    cout << "begin() == end(): "
-         << (emptyTree.begin() == emptyTree.end()) << endl;
+    TestEmptyTree<Tree>();
 }
 
 void DemoBinaryTree() {
@@ -750,4 +759,103 @@ void DemoHashTable() {
     // --------------------------------------------------
 
     TestTreeLifecycle(ascTable, "HashTable", ascFilename);
+}
+
+void DemoMerkleTree() {
+    using Merkle = MerkleTree<TX>;
+    using Node   = Merkle::Node;
+
+    const string filename = "merkletree.txt";
+    ofstream(filename, ios::trunc).close();
+
+    // (dato, ref). 5 hojas: el nivel impar hace subir un nodo sin hermano.
+    const vector<pair<TX, Ref>> elements = {
+        {10, 0}, {20, 1}, {30, 2}, {40, 3}, {50, 4}
+    };
+
+    auto printRoot = [](const string& label, const Merkle& tree) {
+        cout << label << tree.root() << endl;
+    };
+
+    // --------------------------------------------------
+    // CONSTRUCCION (reutiliza TestContainer)
+    // Internos: (hash,-1)   Hojas: (hash(dato),ref)
+    // --------------------------------------------------
+
+    cout << "-- PRUEBAS DE INSERT (MerkleTree, 5 hojas) --\n";
+    Merkle tree;
+    TestContainer(tree, elements, filename);
+    printRoot("Raiz: ", tree);
+    cout << "Hojas: " << tree.leafCount() << endl;
+
+    // --------------------------------------------------
+    // RECORRIDOS
+    // --------------------------------------------------
+
+    cout << "-- PRUEBAS DE RECORRIDO (MerkleTree) --\n";
+    cout << "Preorder:\n\t[";
+    tree.call(PrintNode<Node>, cout);
+    cout << "]" << endl;
+
+    cout << "Postorder (derecha primero):\n\t[";
+    tree.rcall(PrintNode<Node>, cout);
+    cout << "]" << endl;
+
+    cout << "Solo hojas, en orden de insercion:\n\t[";
+    for (auto&& node : tree.inOrder())
+        if (!node.hasLeft() && !node.hasRight())
+            cout << node << " ";
+    cout << "]" << endl;
+
+    // --------------------------------------------------
+    // PROPIEDADES DE LA RAIZ
+    // --------------------------------------------------
+
+    cout << "-- MISMOS DATOS => MISMA RAIZ --\n";
+    Merkle same;
+    InsertElements(same, elements);
+    printRoot("Raiz original: ", tree);
+    printRoot("Raiz copia:    ", same);
+    cout << "Iguales: " << (tree.root() == same.root()) << endl;
+
+    cout << "-- UN DATO ALTERADO (30 -> 31) => OTRA RAIZ --\n";
+    Merkle altered{{10, 0}, {20, 1}, {31, 2}, {40, 3}, {50, 4}};
+    printRoot("Raiz alterada: ", altered);
+    cout << "Iguales: " << (tree.root() == altered.root()) << endl;
+
+    cout << "-- MISMOS DATOS EN OTRO ORDEN => OTRA RAIZ --\n";
+    Merkle reversed{{50, 4}, {40, 3}, {30, 2}, {20, 1}, {10, 0}};
+    printRoot("Raiz invertida: ", reversed);
+    cout << "Iguales: " << (tree.root() == reversed.root()) << endl;
+
+    // --------------------------------------------------
+    // PUSH / REMOVE (reconstruyen el arbol)
+    // --------------------------------------------------
+
+    cout << "-- PRUEBAS DE PUSH (6 hojas: niveles pares) --\n";
+    tree.push(60, 5);
+    cout << tree << endl;
+    printRoot("Raiz: ", tree);
+
+    cout << "-- PRUEBAS DE REMOVE --\n";
+    tree.remove(30, 2);
+    cout << "Luego de remove(30, 2):\n" << tree << endl;
+    printRoot("Raiz: ", tree);
+
+    Merkle::Hash before = tree.root();
+    tree.remove(999, 9);
+    cout << "remove(999, 9) inexistente, raiz sin cambios: "
+         << (tree.root() == before) << endl;
+
+    // --------------------------------------------------
+    // COPY / MOVE / CLEAR / VACIO (reutiliza helpers de arboles)
+    // No se usa TestTreeLifecycle: el archivo guarda hashes, no los datos,
+    // asi que no se puede reconstruir el arbol leyendolo.
+    // --------------------------------------------------
+
+    TestTreeCopyAndClear(tree, "MerkleTree");
+    printRoot("Raiz luego de reinsertar: ", tree);
+
+    TestEmptyTree<Merkle>();
+    printRoot("Raiz del arbol vacio: ", Merkle{});
 }

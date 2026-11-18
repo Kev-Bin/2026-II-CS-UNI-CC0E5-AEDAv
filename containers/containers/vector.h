@@ -177,6 +177,22 @@ protected:
         return *this;
     }
 
+    // Copia sin bloquear: quien la llama (operator=) ya tiene m_mutex.
+    Vector& copy(const Vector& another) {
+        if (this == &another)
+            return *this;
+
+        m_comp = another.m_comp;
+        resize(another.m_size);
+
+        for (size_t i = 0; i < another.m_size; ++i)
+            m_data[i] = another.m_data[i];
+
+        m_size = another.m_size;
+
+        return *this;
+    }
+
 public:
 
     const Node& Peek() const {
@@ -219,9 +235,8 @@ public:
     }
 
     Vector& operator=(const Vector& another) {
-        scoped_lock lock(m_mutex); 
-        copy(another); 
-        return *this;
+        scoped_lock lock(m_mutex);
+        return copy(another);
     }
 
     ForwardIterator       begin()   override        { return ForwardIterator(m_data); }

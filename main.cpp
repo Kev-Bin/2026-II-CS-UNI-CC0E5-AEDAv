@@ -16,5 +16,6 @@ int main() {
     DemoHeap();
     DemoBinaryTree();
     DemoHashTable();
+    DemoMerkleTree();
     return 0;
 }
