@@ -1,9 +1,9 @@
 #ifndef __DOUBLYLINKEDLIST_H__
 #define __DOUBLYLINKEDLIST_H__
 
-#include "GeneralNode.h"
-#include "Iterator.h"
-#include "LinkedList.h"
+#include "../../GeneralNode.h"
+#include "../../Iterator.h"
+#include "linkedlist.h"
 
 template <typename T>
 class DoublyLinkedListNode : 
@@ -98,6 +98,10 @@ protected:
         sentinel.m_pPrev = nullptr;
     }
 
+    void connect(Node* prev, Node* next) override {
+        Parent::connect(prev, next);
+        next->m_pPrev = prev; 
+    }
 public:
 
     BackwardIterator rbegin() override              { return BackwardIterator(m_pTail); }

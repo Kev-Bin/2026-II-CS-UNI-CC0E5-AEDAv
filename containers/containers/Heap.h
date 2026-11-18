@@ -3,7 +3,7 @@
 
 #include <mutex>
 #include "vector.h"
-#include "../types.h"
+#include "../../types.h"
 
 template <typename CompareTraits>
 struct HeapTraits {
@@ -50,6 +50,25 @@ protected:
     void internalClear() override {
         m_data.clear();
         m_size = 0;
+    }
+
+    void internalRemove(const value_type& value, Ref ref) override {
+        scoped_lock lock(m_mutex);
+
+        if (m_size == 0) 
+            throw std::out_of_range("Heap vacio");
+        
+        size_t i = m_data.indexOf(value, ref);
+
+        std::swap(m_data[i], m_data[m_size - 1]);
+        m_data.pop_back();
+        --m_size;
+        heapifyUp(i);
+        heapifyDown(i); 
+        //solo tendra efecto Up o Down, no ambos
+        //asi que no es necesario trackear el indice de la nueva posicion tras aplicar heapifyUp
+        //tampoco es necesario preocuparse por potencialmente terminar ejecutando heapifyDown en otro elemento,
+        //ya que por la propia naturaleza de la funcion, no se desordenara el heap
     }
         
     void internalPush(const value_type &value, Ref ref) { internalPush(new Node(value, ref)); }

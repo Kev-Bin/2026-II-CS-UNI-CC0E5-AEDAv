@@ -1,18 +1,18 @@
 #ifndef __BINARYTREE_H__
 #define __BINARYTREE_H__
 
-#include "vector.h"
-#include "../types.h"
+#include "../../Container.h"
+#include "../vector.h"
+#include "../../../types.h"
 
-template <typename T, typename Derived = void>
-class BinaryTreeNode : public GeneralNode<T> {
+template <typename T, typename R = Ref, typename Derived = void>
+class BinaryTreeNode : public GeneralNode<T, R> {
 
 public:
 
-    using Parent     = GeneralNode<T>;
-
-    using MySelf = std::conditional_t<std::is_void_v<Derived>, BinaryTreeNode, Derived>;
-    using value_type = Parent::value_type;
+    using Parent        = GeneralNode<T, R>;
+    using MySelf        = std::conditional_t<std::is_void_v<Derived>, BinaryTreeNode, Derived>;
+    using value_type    = Parent::value_type;
     
     using Parent::Parent;
 
@@ -48,21 +48,22 @@ public:
 
 template <typename BTIterator>
 class Range {
-public:
-    using Node = typename BTIterator::Node;
 
-    Range(Node* root) : m_root(root) {}
+    public:
 
-    BTIterator begin() const {
-        return BTIterator(m_root);
-    }
+        using Node = typename BTIterator::value_type;   // el iterador no define 'Node'
 
-    BTIterator end() const {
-        return BTIterator(nullptr);
-    }
+    private:
 
-private:
-    Node* m_root;
+        Node* m_pRoot;
+    
+    public:
+
+        Range(Node* root) : m_pRoot(root) {}
+
+        BTIterator begin()  const   { return BTIterator(m_pRoot); }
+        BTIterator end()    const   { return BTIterator(nullptr); }
+
 };
 
 template <typename Node, bool Reverse>
@@ -89,165 +90,176 @@ struct Traversal {
 };
 
 
-template <typename T, bool Reverse = false, bool IsConst = false>
-class BTInOrderIterator : public Iterator<BinaryTreeNode<T>, IsConst> {
+template <typename T, bool IsConst = false, bool Reverse = false>
+class BTInOrderIterator : public Iterator<T, IsConst> {
 
-public:
-    using MySelf    = BTInOrderIterator<T, Reverse, IsConst>;
-    using Parent    = Iterator<BinaryTreeNode<T>, IsConst>;
-    using Node      = Parent::value_type;
-    using Trav      = Traversal<Node, Reverse>;
-    using Parent::set;
+    public:
 
-    BTInOrderIterator(Node* ptr) : Parent(ptr) { if (ptr) descendFirst(ptr); }
+        using MySelf        = BTInOrderIterator<T, IsConst, Reverse>;
+        using Parent        = Iterator<T, IsConst>;
+        using value_type    = typename Parent::value_type;
+        using Trav          = Traversal<value_type, Reverse>;
+        using Parent::set;
 
-    MySelf& operator++() override {
-        if (!this->m_ptr) return *this;
+    private:
 
-        if (Trav::hasLast(this->m_ptr)) {
-            descendFirst(Trav::getLast(this->m_ptr));
+        Vector<value_type*> stack;
+    
+    public:
+
+        BTInOrderIterator(value_type* ptr) : Parent(ptr) { if (ptr) descendFirst(ptr); }
+
+        MySelf& operator++() override {
+            if (!this->m_ptr) return *this;
+
+            if (Trav::hasLast(this->m_ptr)) {
+                descendFirst(Trav::getLast(this->m_ptr));
+                return *this;
+            }
+
+            if (stack.empty()) {
+                set(nullptr);
+                return *this;
+            }
+
+            set(stack.pop_back().getValue());
             return *this;
         }
 
-        if (stack.empty()) {
-            set(nullptr);
-            return *this;
+    private:
+
+        void descendFirst(value_type* ptr) {
+            while (Trav::hasFirst(ptr)) {
+                stack.pushBack(ptr, 0);
+                ptr = Trav::getFirst(ptr);
+            }
+            set(ptr);
         }
-
-        set(stack.pop_back().getValue());
-        return *this;
-    }
-
-private:
-    Vector<Node*> stack;
-
-    void descendFirst(Node* ptr) {
-        while (Trav::hasFirst(ptr)) {
-            stack.pushBack(ptr, 0);
-            ptr = Trav::getFirst(ptr);
-        }
-        set(ptr);
-    }
 };
 
+template <typename T, bool IsConst = false, bool Reverse = false>
+class BTPreorderIterator : public Iterator<T,IsConst> {
 
-template <typename T, bool Reverse = false, bool IsConst = false>
-class BTPreorderIterator : public Iterator<BinaryTreeNode<T>,IsConst> {
+    public:
 
-public:
-    using MySelf    = BTPreorderIterator<T, Reverse, IsConst>;
-    using Parent    = Iterator<BinaryTreeNode<T>, IsConst>;
-    using Node      = Parent::value_type;
-    using Trav      = Traversal<Node, Reverse>;
-    using Parent::set;
-    
-    BTPreorderIterator(Node* ptr) : Parent(ptr) { if (ptr) pushChildren(ptr); }
+        using MySelf        = BTPreorderIterator<T, IsConst, Reverse>;
+        using Parent        = Iterator<T, IsConst>;
+        using value_type    = typename Parent::value_type;
+        using Trav          = Traversal<value_type, Reverse>;
+        using Parent::set;
+        
+        BTPreorderIterator(value_type* ptr) : Parent(ptr) { if (ptr) pushChildren(ptr); }
 
-    MySelf& operator++() override {
-        if (stack.empty()) {
-            set(nullptr);
+        MySelf& operator++() override {
+            if (stack.empty()) {
+                set(nullptr);
+                return *this;
+            }
+
+            value_type* next = stack.pop_back().getValue();
+
+            pushChildren(next);
+            set(next);
             return *this;
         }
 
-        Node* next = stack.pop_back().getValue();
+    private:
 
-        pushChildren(next);
-        set(next);
-        return *this;
-    }
+        Vector<value_type*> stack;
 
-private:
-    Vector<Node*> stack;
-
-    void pushChildren(Node* ptr) {
+        void pushChildren(value_type* ptr) {
             if (Trav::hasLast(ptr)) stack.pushBack(Trav::getLast(ptr), 0);
             if (Trav::hasFirst(ptr)) stack.pushBack(Trav::getFirst(ptr), 0);
-    }
+        }
 };
 
-template <typename T, bool Reverse, bool IsConst = false>
-class BTPostorderIterator : public Iterator<BinaryTreeNode<T>,IsConst> {
+template <typename T, bool IsConst = false, bool Reverse = false>
+class BTPostorderIterator : public Iterator<T,IsConst> {
 
-public:
-    using MySelf    = BTPostorderIterator<T, Reverse, IsConst>;
-    using Parent    = Iterator<BinaryTreeNode<T>, IsConst>;
-    using Node      = Parent::value_type;
-    using Parent::set;
+    public:
 
-    using Trav = Traversal<Node, Reverse>;
+        using MySelf        = BTPostorderIterator<T, IsConst, Reverse>;
+        using Parent        = Iterator<T, IsConst>;
+        using value_type    = typename Parent::value_type;
+        using Trav          = Traversal<value_type, Reverse>;
+        using Parent::set;
     
-    BTPostorderIterator(Node* ptr) : Parent(ptr) {
-        if (!ptr) return;
-        
-        Node* curr = ptr;
+    private:
 
-        while (Trav::hasFirst(curr) || Trav::hasLast(curr)) {
-            stack.pushBack(curr, 0);
-            if (Trav::hasFirst(curr)) curr = Trav::getFirst(curr);
-            else curr = Trav::getLast(curr);
-        }
-        set(curr);
-    }
+        Vector<value_type*> stack;
     
-    MySelf& operator++() override {
-        if (stack.empty()) {
-            set(nullptr);
-            return *this;
-        }
-        
-        Node* parent = stack.pop_back().getValue();
+    public:
 
-        if (Trav::hasLast(parent) && Trav::getLast(parent) != this->m_ptr) {
-            stack.pushBack(parent, 0);
+        BTPostorderIterator(value_type* ptr) : Parent(ptr) {
+            if (!ptr) return;
             
-            Node* curr = Trav::getLast(parent);
-            
+            value_type* curr = ptr;
+
             while (Trav::hasFirst(curr) || Trav::hasLast(curr)) {
                 stack.pushBack(curr, 0);
                 if (Trav::hasFirst(curr)) curr = Trav::getFirst(curr);
                 else curr = Trav::getLast(curr);
             }
-
             set(curr);
+        }
+        
+        MySelf& operator++() override {
+            if (stack.empty()) {
+                set(nullptr);
+                return *this;
+            }
+            
+            value_type* parent = stack.pop_back().getValue();
+
+            if (Trav::hasLast(parent) && Trav::getLast(parent) != this->m_ptr) {
+                stack.pushBack(parent, 0);
+                
+                value_type* curr = Trav::getLast(parent);
+                
+                while (Trav::hasFirst(curr) || Trav::hasLast(curr)) {
+                    stack.pushBack(curr, 0);
+                    if (Trav::hasFirst(curr)) curr = Trav::getFirst(curr);
+                    else curr = Trav::getLast(curr);
+                }
+
+                set(curr);
+                return *this;
+            }
+            set(parent);
             return *this;
         }
-        set(parent);
-        return *this;
-    }
 
-private:
-    Vector<Node*> stack;
 };
 
-template <typename CompareTraits>
+template <typename CompareTraits, typename NodeT = BinaryTreeNode<typename CompareTraits::value_type>>
 struct BinaryTreeTraits {
 
     using value_type                = typename CompareTraits::value_type;
     using Compare                   = typename CompareTraits::Compare;
-    using Node                      = BinaryTreeNode<value_type>;
-    
-    using ForwardIterator           = BTPreorderIterator<value_type>;
-    using ConstForwardIterator      = BTPreorderIterator<value_type, false, true>;
+    using Node                      = NodeT;
 
-    using BackwardIterator          = BTPostorderIterator<value_type, true>;
-    using ConstBackwardIterator     = BTPostorderIterator<value_type, true, true>;
+    using ForwardIterator           = BTPreorderIterator<Node>;
+    using ConstForwardIterator      = BTPreorderIterator<Node, true>;
 
-    using InOrderIterator           = BTInOrderIterator<value_type, false>;
-    using ReverseInOrderIterator    = BTInOrderIterator<value_type, true>;
+    using BackwardIterator          = BTPostorderIterator<Node, false, true>;
+    using ConstBackwardIterator     = BTPostorderIterator<Node, true, true>;
 
-    using PreOrderIterator          = BTPreorderIterator<value_type, false>;
-    using ReversePreOrderIterator   = BTPreorderIterator<value_type, true>;
+    using InOrderIterator           = BTInOrderIterator<Node>;
+    using ReverseInOrderIterator    = BTInOrderIterator<Node, false, true>;
 
-    using PostOrderIterator         = BTPostorderIterator<value_type, false>;
-    using ReversePostOrderIterator  = BTPostorderIterator<value_type, true>;
+    using PreOrderIterator          = BTPreorderIterator<Node>;
+    using ReversePreOrderIterator   = BTPreorderIterator<Node, false, true>;
+
+    using PostOrderIterator         = BTPostorderIterator<Node>;
+    using ReversePostOrderIterator  = BTPostorderIterator<Node, false, true>;
         
 };
 
-template <typename T>
-struct BinaryTreeAscTraits : BinaryTreeTraits<AscendingTraits<T>> {};
+template <typename T, typename NodeT = BinaryTreeNode<T>>
+struct BinaryTreeAscTraits  : BinaryTreeTraits<AscendingTraits<T>, NodeT> {};
 
-template <typename T>
-struct BinaryTreeDescTraits : BinaryTreeTraits<DescendingTraits<T>> {};
+template <typename T, typename NodeT = BinaryTreeNode<T>>
+struct BinaryTreeDescTraits : BinaryTreeTraits<DescendingTraits<T>, NodeT> {};
 
 template <typename Traits>
 class BinaryTree : 
@@ -285,7 +297,7 @@ protected:
 
     virtual void rebalance(Node*& root) {}
 
-    void internalPush(const value_type& value, Ref ref) { internalPush(value, ref, m_pRoot); }
+    void internalPush(const value_type& value, Ref ref) override { internalPush(value, ref, m_pRoot); }
 
     virtual void internalPush(const value_type& value, Ref ref, Node*& root) {
         if (!root)
@@ -302,6 +314,8 @@ protected:
         this->ApplyFunction([](Node& node) { delete &node; });
         m_pRoot = nullptr;
     }
+
+    void internalRemove(const value_type& value, Ref ref) override { internalRemove(value, ref, m_pRoot); }
 
     virtual void internalRemove(const value_type& value, Ref ref, Node*& root) {
         if (!root) return;
@@ -344,8 +358,8 @@ protected:
         return m;
     }
 
-    Parent& copy(const BinaryTree& another) { 
-        Parent::copy(another);
+    Parent& internalCopy(const BinaryTree& another) override { 
+        Parent::internalCopy(another);
         
         if (this != &another) {
             internalClear();
@@ -355,22 +369,24 @@ protected:
         return *this;
     }
 
-    void printTree(std::ostream& os, Node* node, int lvl = 0) const {
+    std::ostream& printTree(std::ostream& os, Node* node, const char* connector = "\t", size_t lvl = 0) const {
         if (!node) 
-            return;
+            return os;
 
-        printTree(os, node->getRight(), lvl + 1);
+        printTree(os, node->getRight(),"┌──", lvl + 1);
 
-        for (int i = 0; i < lvl; i++) os << '\t';  
-        os << *node << '\n';
+        for (size_t i = 0; i < lvl; i++) os << "\t";  
+        os << connector <<*node << '\n';
 
-        printTree(os, node->getLeft(), lvl + 1);
+        printTree(os, node->getLeft(), "└──", lvl + 1);
+
+        return os;
     }
 
 public:
     BinaryTree() = default;
 
-    BinaryTree(const BinaryTree& another) : Parent() { *this = another; }
+    BinaryTree(const BinaryTree& another) : Parent() { this->copy(another); }
 
     BinaryTree(initializer_list<pair<value_type, Ref>> values) { 
         for (const auto& value : values) 
@@ -387,41 +403,30 @@ public:
     ~BinaryTree() override { this->clear(); }
 
     bool empty() const override { return m_pRoot == nullptr; }
-    
-    virtual void remove(const value_type& value, Ref ref) {
-        scoped_lock lock(m_mutex);
-        internalRemove(value, ref, m_pRoot);
-    }
 
-    ForwardIterator         begin() override            { return ForwardIterator(m_pRoot); }
-    ForwardIterator         end() override              { return ForwardIterator(nullptr); }
-    ConstForwardIterator    cbegin() const override     { return ConstForwardIterator(m_pRoot); }
-    ConstForwardIterator    cend() const override       { return ConstForwardIterator(nullptr); }
+    //iteradores x defecto
+    ForwardIterator      begin() override           { return ForwardIterator(m_pRoot); }
+    ForwardIterator      end() override             { return ForwardIterator(nullptr); }
+    ConstForwardIterator cbegin() const override    { return ConstForwardIterator(m_pRoot); }
+    ConstForwardIterator cend() const override      { return ConstForwardIterator(nullptr); }
     
-    BackwardIterator        rbegin() override           { return BackwardIterator(m_pRoot); }
-    BackwardIterator        rend() override             { return BackwardIterator(nullptr); }
-    ConstBackwardIterator   crbegin() const override    { return ConstBackwardIterator(m_pRoot); }
-    ConstBackwardIterator   crend() const override      { return ConstBackwardIterator(nullptr); }
+    BackwardIterator      rbegin() override          { return BackwardIterator(m_pRoot); }
+    BackwardIterator      rend() override            { return BackwardIterator(nullptr); }
+    ConstBackwardIterator crbegin() const override   { return ConstBackwardIterator(m_pRoot); }
+    ConstBackwardIterator crend() const override     { return ConstBackwardIterator(nullptr); }
     
-    auto inOrder()          { return Range<InOrderIterator>(m_pRoot); }
-    auto reverseInOrder()   { return Range<ReverseInOrderIterator>(m_pRoot); }
-    auto preOrder()         { return Range<PreOrderIterator>(m_pRoot); }
-    auto reversePreOrder()  { return Range<ReversePreOrderIterator>(m_pRoot); }
-    auto postOrder()        { return Range<PostOrderIterator>(m_pRoot); }
-    auto reversePostOrder() { return Range<ReversePostOrderIterator>(m_pRoot); }
+    //Rangos
+    auto inOrder()    { return Range<InOrderIterator>(m_pRoot); }
+    auto rInOrder()   { return Range<ReverseInOrderIterator>(m_pRoot); }
+    auto preOrder()   { return Range<PreOrderIterator>(m_pRoot); }
+    auto rPreOrder()  { return Range<ReversePreOrderIterator>(m_pRoot); }
+    auto postOrder()  { return Range<PostOrderIterator>(m_pRoot); }
+    auto rPostOrder() { return Range<ReversePostOrderIterator>(m_pRoot); }
         
     friend std::ostream& operator<<(std::ostream& os, const BinaryTree<Traits>& tree) {
         std::scoped_lock lock(tree.m_mutex);
-
-        tree.printTree(os, tree.m_pRoot);
-
-        return os;
+        return tree.printTree(os, tree.m_pRoot);
     }
 
-    BinaryTree& operator=(const BinaryTree& another) { 
-        scoped_lock lock(m_mutex);
-        copy(another);
-        return *this; 
-    }
 };
 #endif // __BINARYTREE_H__

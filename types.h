@@ -1,8 +1,9 @@
 #ifndef __TYPES_H__
 #define __TYPES_H__
 
-using TX = int;
-using Ref = long long;
+using TX    = int;
+using Ref   = long long;
+using TID   = unsigned long long;
 
 // Crear el tipo CW como char si estamos en architectura de 16 bits
 // pero como wchar_t si estamos en 32 o 64 bits. Esto permite que el mismo

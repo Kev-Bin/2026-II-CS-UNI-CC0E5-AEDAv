@@ -3,10 +3,10 @@
 #include <initializer_list>
 #include <iostream>
 #include <mutex>
-#include "GeneralNode.h"
-#include "Iterator.h"
-#include "../foreach.h"
-#include "List.h"
+#include "../../GeneralNode.h"
+#include "../../Iterator.h"
+#include "../../../foreach.h"
+#include "../../List.h"
 
 template <typename T>
 class LinkedListNode : public GeneralNode<T> {
@@ -71,7 +71,7 @@ protected:
 
     void internalPushBack(const value_type& value, Ref ref) override { internalPushBack(new Node(value, ref, &sentinel)); }
 
-    void internalPushBack(Node* nodePtr) override {
+    virtual void internalPushBack(Node* nodePtr) {
         nodePtr->m_pNext = &sentinel;
         if (m_size == 0) {
             m_pRoot = m_pTail = nodePtr;
@@ -100,6 +100,15 @@ protected:
         } // bucle mejorable
         
         internalPushBack(nodePtr);
+    }
+
+    void connect(Node* prev, Node* next) override {
+        if (prev == nullptr) {
+            m_pRoot = next;
+            return;
+        }
+
+        prev->m_pNext = next;
     }
 
 public:

@@ -1,9 +1,10 @@
 #ifndef __CONTAINERIO_H__
 #define __CONTAINERIO_H__
 
-#include "Container.h"
+#include "../Container.h"
 #include <istream>
 #include <ostream>
+#include "NodeIO.h"
 
 template <typename Traits, typename Derived>
 std::ostream& operator<<(std::ostream& os, const Container<Traits, Derived>& container) {

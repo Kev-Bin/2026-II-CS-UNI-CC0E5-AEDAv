@@ -1,174 +1,151 @@
 #ifndef __AVLTREE_H__
 #define __AVLTREE_H__
 
-#include "binarytree.h"
+#include "BinaryTree.h"
 #include <algorithm>
 #include <initializer_list>
-#include <mutex>
 #include <utility>
 
-template <typename T>
-class AVLTreeNode : public BinaryTreeNode<T, AVLTreeNode<T>> {
+template <typename T, typename R = Ref, typename Derived = void>
+class AVLTreeNode : public BinaryTreeNode<T, R, AVLTreeNode<T, R, Derived>> {
 
-public:
+    public:
 
-    using Parent = BinaryTreeNode<T, AVLTreeNode<T>>;
-    using Parent::Parent;
+        using Parent = BinaryTreeNode<T, R, AVLTreeNode<T, R, Derived>>;
+        using Parent::Parent;
 
-protected:
+    protected:
 
-    size_t m_height = 1;
+        size_t m_height = 1;
 
-public:
+    public:
+    
+        AVLTreeNode(const AVLTreeNode& another) : Parent(another), m_height(another.m_height) {}
 
-    AVLTreeNode(const AVLTreeNode& another) : Parent(another), m_height(another.m_height) {}
-
-    size_t  height() const  { return m_height; }
-
-    void    setHeight(size_t height) { m_height = height; }
+        size_t  height() const              { return m_height; }
+        void    setHeight(size_t height)    { m_height = height; }
 
 };
 
-template <typename T>
-struct AVLTreeAscTraits : BinaryTreeAscTraits<T> {
-    using Node = AVLTreeNode<T>;
-};
+template <typename T, typename NodeT = AVLTreeNode<T>>
+struct AVLTreeAscTraits  : BinaryTreeAscTraits<T, NodeT> {};
 
-template <typename T>
-struct AVLTreeDescTraits : BinaryTreeDescTraits<T> {
-    using Node = AVLTreeNode<T>;
-};
+template <typename T, typename NodeT = AVLTreeNode<T>>
+struct AVLTreeDescTraits : BinaryTreeDescTraits<T, NodeT> {};
 
 template <typename Traits>
-class AVLTree : 
-    public BinaryTree<Traits> {
+class AVLTree : public BinaryTree<Traits> {
 
-public:
+    public:
 
-    using Parent     = BinaryTree<Traits>;
-    using value_type = typename Parent::value_type;
-    using Node       = AVLTreeNode<value_type>;
+        using Parent     = BinaryTree<Traits>;
+        using value_type = typename Parent::value_type;
+        using Node       = typename Parent::Node;
 
-    AVLTree() = default;
 
-    AVLTree(std::initializer_list<std::pair<value_type, Ref>> values) { for (const auto& [value, ref] : values) push(value, ref); }
+    protected:
 
-    AVLTree(const AVLTree& another) : Parent() { 
-        scoped_lock lock(m_mutex);
-        copy(another); 
-    }
+        using Parent::m_mutex;   // protected para que las subclases (HashTable) lo usen
 
-    AVLTree& operator=(const AVLTree& another) {
-        if (this != &another) {
-            std::scoped_lock lock(this->m_mutex, another.m_mutex);
-            copy(another);
+    public:
+    
+        AVLTree() = default;
+
+        AVLTree(std::initializer_list<std::pair<value_type, Ref>> values) { for (const auto& [value, ref] : values) this->push(value, ref); }
+
+        // copy() ya toma m_mutex (via Container::operator=); bloquearlo aqui
+        // tambien causaba deadlock al ser std::mutex no recursivo.
+        AVLTree(const AVLTree& another) : Parent(another) {}
+
+        AVLTree& operator=(const AVLTree& another) {
+            if (this != &another)
+                copy(another);
+
+            return *this;
         }
 
-        return *this;
-    }
+    protected:
 
-protected:
+        using Parent::copy;
 
-    using Parent::copy;
+        using Parent::m_comp;
 
-    using Parent::m_comp;
+        static int height(Node* n) { return n ? n->height() : 0; }
 
-    void internalPush(Node* node) override {
-        recursivePush(this->m_pRoot, node);
-    }
+        static void updateHeight(Node* node) { node->setHeight(1 + std::max(height(node->getLeft()), height(node->getRight()))); }
 
-    Node* cloneTree(Node* node) override { return node ? new Node(*node) : nullptr; }
+        static int bFactor(Node* node) { return height(node->getLeft()) - height(node->getRight()); }
 
-    static void updateHeight(Node* node) {
-        if (!node) 
-            return;
+        void rebalance(Node*& root) override {
+            if (!root) 
+                return;
 
-        size_t lHeight = node->getLeft()->height();
-        size_t rHeight = node->getRight()->height();
+            updateHeight(root);
 
-        node->setHeight(1 + std::max(lHeight, lHeight)); 
-    }
+            int balance = bFactor(root);
+            
+            if (balance > 1) {
+                Node*& left = root->getLeft();
 
-    static int bFactor(Node* node) { 
-        if (!node) 
-            return 0;
+                if (bFactor(left) < 0) 
+                    rotate(left, 0);
 
-        size_t lHeight = node->getLeft()->height();
-        size_t rHeight = node->getRight()->height();
+                rotate(root, 1);
+            } 
+            else if (balance < -1) {
+                Node*& right = root->getRight();
 
-        return lHeight - rHeight; 
-    }
+                if (bFactor(right) > 0) 
+                    rotate(right, 1);
 
-    static void rebalance(Node*& root) {
-        if (!root) 
-            return;
-
-        updateHeight(root);
-
-        int balance = bFactor(root);
-        
-        if (balance > 1) {
-            Node*& left = root->getLeft();
-
-            if (bFactor(left) < 0) 
-                rotate(left, 0);
-
-            rotate(root, 1);
-        } 
-        else if (balance < -1) {
-            Node*& right = root->getRight();
-
-            if (bFactor(right) > 0) 
-                rotate(right, 1);
-
-            rotate(root, 0);
-        }
-    }
-
-    static void rotate(Node*& root, int dir) {
-        Node* pivot = (dir == 0) ? root->getRight() : root->getLeft();
-
-        if (dir == 0) {
-            root->getRight() = pivot->getLeft();
-            pivot->getLeft() = root;
-        } else {
-            root->getLeft() = pivot->getRight();
-            pivot->getRight() = root;
+                rotate(root, 0);
+            }
         }
 
-        updateHeight(root);
-        updateHeight(pivot);
+        static void rotate(Node*& root, int dir) {
+            Node* pivot = (dir == 0) ? root->getRight() : root->getLeft();
 
-        root = pivot;
-    }
+            if (dir == 0) {
+                root->getRight() = pivot->getLeft();
+                pivot->getLeft() = root;
+            } else {
+                root->getLeft() = pivot->getRight();
+                pivot->getRight() = root;
+            }
 
-    void remove(Node*& root) {
-        if (!root->hasLeft()) {
-            Node* temp = root;
-            root = root->getRight();
-            delete temp;
-        }
-        else if (!root->hasRight()) {
-            Node* temp = root;
-            root = root->getLeft();
-            delete temp;
-        }
-        else {
-            // Tiene dos hijos.
-            // Buscamos el máximo del subárbol izquierdo.
-            Node* temp = this->max(root->getLeft());
+            updateHeight(root);
+            updateHeight(pivot);
 
-            temp->setLeft(root->getLeft());
-            temp->setRight(root->getRight());
-
-            Node* oldRoot = root;
-            root = temp;
-
-            delete oldRoot;
+            root = pivot;
         }
 
-        if (root)
-            rebalance(root);
-    }
+        void remove(Node*& root) {
+            if (!root->hasLeft()) {
+                Node* temp = root;
+                root = root->getRight();
+                delete temp;
+            }
+            else if (!root->hasRight()) {
+                Node* temp = root;
+                root = root->getLeft();
+                delete temp;
+            }
+            else {
+                // Tiene dos hijos.
+                // Buscamos el máximo del subárbol izquierdo.
+                Node* temp = this->max(root->getLeft());
+
+                temp->setLeft(root->getLeft());
+                temp->setRight(root->getRight());
+
+                Node* oldRoot = root;
+                root = temp;
+
+                delete oldRoot;
+            }
+
+            if (root)
+                rebalance(root);
+        }
 };
 #endif // __AVLTREE_H__

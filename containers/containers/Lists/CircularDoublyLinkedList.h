@@ -49,6 +49,14 @@ protected:
         sentinel.m_pPrev = nullptr;
     }
 
+    void connect(Node* prev, Node* next) override {
+        Parent::connect(prev, next);
+        if (prev == nullptr) {
+            sentinel.m_pNext    = next;
+            next->m_pPrev       = &sentinel;
+        }
+    }
+
 public:
 
     BackwardIterator      rbegin()  override        { return BackwardIterator(sentinel.m_pPrev ? sentinel.m_pPrev : &sentinel); }

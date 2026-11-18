@@ -1,7 +1,7 @@
 #ifndef __CONTAINER_H__
 #define __CONTAINER_H__
 
-#include <Utility>
+#include <utility>
 #include <mutex>
 #include "Iterator.h"
 #include "../foreach.h"
@@ -28,7 +28,7 @@ std::ostream& operator<<(std::ostream&, const Container<Traits, Derived>&);
 template <typename Traits, typename Derived>
 std::istream& operator>>(std::istream&, Container<Traits, Derived>&);
 
-template <typename Traits, typename Derived>
+template <typename Traits, typename Derived = void>
 class Container : 
     public ForwardIterable<Traits> {
 
@@ -45,7 +45,7 @@ public:
 protected:
 
     mutable std::mutex  m_mutex;
-    Compare             m_comp;
+    Compare m_comp;
 
     virtual void internalPush(const value_type&, Ref)   = 0;
     virtual void internalRemove(const value_type&, Ref) = 0;
@@ -87,15 +87,14 @@ public:
     
     std::ostream&   write(std::ostream& os)   { return os << *this; }
     std::istream&   read(std::istream& is)    { return is >> *this; }
-    Derived&        copy(const Derived& other){ return *this = other; }
+    Container&      copy(const Derived& other){ return *this = other; }
 
     friend std::ostream& operator<< <Traits, Derived>(std::ostream&, const Container<Traits, Derived>&);
     friend std::istream& operator>> <Traits, Derived>(std::istream&, Container<Traits, Derived>&);
     
-    Derived& operator=(const Derived& another) {
+    Container& operator=(const Derived& another) {
         scoped_lock lock(m_mutex); 
-        internalCopy(another); 
-        return *this;
+        return internalCopy(another);
     }
 };
 #endif // __CONTAINER_H__

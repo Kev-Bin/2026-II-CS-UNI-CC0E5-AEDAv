@@ -26,8 +26,7 @@ protected:
     
     size_t m_size = 0;
 
-    virtual void internalPushBack(const value_type&, Ref)   = 0;
-    virtual void internalPushBack(Node*)                    = 0;
+    virtual void internalPushBack(const value_type&, Ref) = 0;
     
     Sequence& internalCopy(const Derived& another) override {
         if(this != &another) { 

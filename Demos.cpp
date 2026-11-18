@@ -6,14 +6,16 @@
 #include <vector>
 #include "foreach.h"
 #include "containers/Container.h"
-#include "containers/ContainerIO.h"
-#include "containers/vector.h"
-#include "containers/LinkedList.h"
-#include "containers/CircularLinkedList.h"
-#include "containers/DoublyLinkedList.h"
-#include "containers/CircularDoublyLinkedList.h"
-#include "containers/Heap.h"
-#include "containers/BinaryTree.h"
+#include "containers/IO/ContainerIO.h"
+#include "containers/containers/vector.h"
+#include "containers/containers/Lists/linkedlist.h"
+#include "containers/containers/Lists/CircularLinkedList.h"
+#include "containers/containers/Lists/DoublyLinkedList.h"
+#include "containers/containers/Lists/CircularDoublyLinkedList.h"
+#include "containers/containers/Heap.h"
+#include "containers/containers/Trees/BinaryTree.h"
+#include "containers/containers/Trees/AVLTree.h"
+#include "containers/containers/Trees/HashTable.h"
 #include "Demos.h"
 using namespace std;
 
@@ -491,34 +493,50 @@ void DemoHeap() {
     cout << endl;
 }
 
-void DemoBinaryTree() {
-    using IntAscTree  = BinaryTree<BinaryTreeAscTraits<TX>>;
-    using IntDescTree = BinaryTree<BinaryTreeDescTraits<TX>>;
+template <typename Tree>
+void TestTreeLifecycle(Tree& tree, const string& treeName, const string& filename);
 
-    ofstream("binarytree_asc.txt", ios::trunc).close();
-    ofstream("binarytree_desc.txt", ios::trunc).close();
+template <typename AscTree, typename DescTree>
+void DemoSearchTree(
+    const string& treeName,
+    const string& ascFilename,
+    const string& descFilename
+) {
+    ofstream(ascFilename, ios::trunc).close();
+    ofstream(descFilename, ios::trunc).close();
 
-    cout << "-- PRUEBAS DE INSERT (ASCENDING TREE) --\n";
-    IntAscTree ascTree;
+    const vector<pair<typename AscTree::value_type, Ref>> elements = {
+        {8, 18}, {3, 13}, {10, 20}, {1, 11},
+        {6, 16}, {14, 24}, {4, 14}, {7, 17}, {13, 23}
+    };
 
-    TestContainer(ascTree,
-        {{8, 18}, {3, 13}, {10, 20}, {1, 11},
-         {6, 16}, {14, 24}, {4, 14}, {7, 17}, {13, 23}},
-        "binarytree_asc.txt");
+    // --------------------------------------------------
+    // INSERTION
+    // --------------------------------------------------
 
-    cout << "-- PRUEBAS DE INSERT (DESCENDING TREE) --\n";
-    IntDescTree descTree;
+    cout << "-- PRUEBAS DE INSERT (" << treeName << " ASCENDING) --\n";
 
-    TestContainer(descTree,
-        {{8, 18}, {3, 13}, {10, 20}, {1, 11},
-         {6, 16}, {14, 24}, {4, 14}, {7, 17}, {13, 23}},
-        "binarytree_desc.txt");
+    AscTree ascTree;
+    TestContainer(ascTree, elements, ascFilename);
 
-    cout << "-- PRUEBAS DE RECORRIDO (ASCENDING TREE) --\n";
+    cout << "-- PRUEBAS DE INSERT (" << treeName << " DESCENDING) --\n";
+
+    DescTree descTree;
+    TestContainer(descTree, elements, descFilename);
+
+    // --------------------------------------------------
+    // TRAVERSALS
+    // --------------------------------------------------
+
+    cout << "-- PRUEBAS DE RECORRIDO (" << treeName << " ASCENDING) --\n";
     TestTraversal(ascTree);
 
-    cout << "-- PRUEBAS DE RECORRIDO (DESCENDING TREE) --\n";
+    cout << "-- PRUEBAS DE RECORRIDO (" << treeName << " DESCENDING) --\n";
     TestTraversal(descTree);
+
+    // --------------------------------------------------
+    // ITERATORS
+    // --------------------------------------------------
 
     cout << "-- PRUEBAS DE ITERADORES --\n";
 
@@ -532,69 +550,204 @@ void DemoBinaryTree() {
         cout << *it << " ";
     cout << "]" << endl;
 
+    // --------------------------------------------------
+    // REINSERTION
+    // --------------------------------------------------
+
     cout << "-- PRUEBAS DE REINSERCION --\n";
 
     ascTree.push(5, 15);
     ascTree.push(2, 12);
     ascTree.push(12, 22);
 
-    cout << "AscTree luego de 3 inserts:\n\t" << ascTree << endl;
+    cout << "AscTree luego de 3 inserts:\n" << ascTree << endl;
 
     cout << "Preorder despues de insertar:\n\t[";
-    ascTree.call(PrintNode<typename IntAscTree::Node>, cout);
+    ascTree.call(PrintNode<typename AscTree::Node>, cout);
     cout << "]" << endl;
+
+    TestTreeLifecycle(ascTree, treeName, ascFilename);
+}
+
+// Pruebas comunes a todo contenedor basado en arbol: copy/move constructor,
+// clear + reinsercion, lectura desde archivo y contenedor vacio.
+// 'tree' se modifica (queda con los elementos reinsertados tras clear()).
+template <typename Tree>
+void TestTreeLifecycle(Tree& tree, const string& treeName, const string& filename) {
+
+    // --------------------------------------------------
+    // COPY CONSTRUCTOR
+    // --------------------------------------------------
 
     cout << "-- PRUEBAS DE COPY CONSTRUCTOR --\n";
 
-    IntAscTree copiedTree(ascTree);
+    Tree copiedTree(tree);
 
-    cout << "Arbol original:\n" << ascTree << endl;
+    cout << "Arbol original:\n" << tree << endl;
     cout << "Arbol copiado:\n" << copiedTree << endl;
 
     copiedTree.push(20, 30);
 
     cout << "Arbol copiado luego de insertar 20:\n"
          << copiedTree << endl;
+
     cout << "Arbol original (sin cambios):\n"
-         << ascTree << endl;
+         << tree << endl;
+
+    // --------------------------------------------------
+    // MOVE CONSTRUCTOR
+    // --------------------------------------------------
 
     cout << "-- PRUEBAS DE MOVE CONSTRUCTOR --\n";
 
-    IntAscTree movedTree(std::move(copiedTree));
+    Tree movedTree(std::move(copiedTree));
 
     cout << "Arbol movido:\n" << movedTree << endl;
 
+    // --------------------------------------------------
+    // CLEAR AND REINSERTION
+    // --------------------------------------------------
+
     cout << "-- PRUEBAS DE CLEAR --\n";
 
-    ascTree.clear();
+    tree.clear();
 
-    cout << "AscTree luego de clear:\n" << ascTree << endl;
-    ascTree.push(10, 2);
-    ascTree.push(5, 1);
-    ascTree.push(15, 3);
+    cout << treeName << " luego de clear:\n" << tree << endl;
 
-    cout << "AscTree luego de reinsertar:\n"
-         << ascTree << endl;
+    tree.push(10, 2);
+    tree.push(5, 1);
+    tree.push(15, 3);
+
+    cout << treeName << " luego de reinsertar:\n"
+         << tree << endl;
+
+    // --------------------------------------------------
+    // FILE READING
+    // --------------------------------------------------
 
     cout << "-- PRUEBAS DE LECTURA --\n";
 
-    IntAscTree loadedTree;
-    ifstream in("binarytree_asc.txt");
+    Tree loadedTree;
 
+    ifstream in(filename);
     in >> loadedTree;
     in.close();
 
-    cout << "BinaryTree leido desde archivo:\n"
+    cout << treeName << " leido desde archivo:\n"
          << loadedTree << endl;
 
     cout << "-- RECORRIDOS DEL ARBOL LEIDO --\n";
     TestTraversal(loadedTree);
 
+    // --------------------------------------------------
+    // EMPTY TREE
+    // --------------------------------------------------
+
     cout << "-- PRUEBAS DE ARBOL VACIO --\n";
 
-    IntAscTree emptyTree;
+    Tree emptyTree;
 
-    cout << "Arbol vacio:" << emptyTree << endl;
+    cout << "Arbol vacio:\n" << emptyTree << endl;
+
     cout << "begin() == end(): "
          << (emptyTree.begin() == emptyTree.end()) << endl;
+}
+
+void DemoBinaryTree() {
+    using IntAscTree  = BinaryTree<BinaryTreeAscTraits<TX>>;
+    using IntDescTree = BinaryTree<BinaryTreeDescTraits<TX>>;
+
+    DemoSearchTree<IntAscTree, IntDescTree>(
+        "BinaryTree",
+        "binarytree_asc.txt",
+        "binarytree_desc.txt"
+    );
+}
+
+void DemoAVLTree() {
+    using IntAscTree  = AVLTree<AVLTreeAscTraits<TX>>;
+    using IntDescTree = AVLTree<AVLTreeDescTraits<TX>>;
+
+    DemoSearchTree<IntAscTree, IntDescTree>(
+        "AVLTree",
+        "avltree_asc.txt",
+        "avltree_desc.txt"
+    );
+}
+void DemoHashTable() {
+    // Clave: codigo de alumno (TX), valor asociado: nota (Ref)
+    using AscTable  = HashTable<TX, Ref, HashTableAscTraits<TX, Ref>>;
+    using DescTable = HashTable<TX, Ref, HashTableDescTraits<TX, Ref>>;
+
+    const string ascFilename  = "hashtable_asc.txt";
+    const string descFilename = "hashtable_desc.txt";
+
+    ofstream(ascFilename, ios::trunc).close();
+    ofstream(descFilename, ios::trunc).close();
+
+    const vector<pair<TX, Ref>> elements = {
+        {8, 18}, {3, 13}, {10, 20}, {1, 11},
+        {6, 16}, {14, 24}, {4, 14}, {7, 17}, {13, 23}
+    };
+
+    // --------------------------------------------------
+    // INSERTION + TRAVERSALS (reutiliza helpers genericos)
+    // --------------------------------------------------
+
+    cout << "-- PRUEBAS DE INSERT (HashTable ASCENDING) --\n";
+    AscTable ascTable;
+    TestContainer(ascTable, elements, ascFilename);
+
+    cout << "-- PRUEBAS DE INSERT (HashTable DESCENDING) --\n";
+    DescTable descTable;
+    TestContainer(descTable, elements, descFilename);
+
+    cout << "-- PRUEBAS DE RECORRIDO (HashTable ASCENDING) --\n";
+    TestTraversal(ascTable);
+
+    cout << "-- PRUEBAS DE RECORRIDO (HashTable DESCENDING) --\n";
+    TestTraversal(descTable);
+
+    cout << "Claves en orden (inOrder):\n\t[";
+    for (auto&& node : ascTable.inOrder())
+        cout << node << " ";
+    cout << "]" << endl;
+
+    // --------------------------------------------------
+    // OPERACIONES DE MAPA
+    // --------------------------------------------------
+
+    cout << "-- PRUEBAS DE CLAVE DUPLICADA (actualiza, no duplica) --\n";
+    ascTable.push(8, 99);
+    cout << "push(8, 99):\n" << ascTable << endl;
+
+    cout << "-- PRUEBAS DE contains / at / operator[] --\n";
+    cout << "contains(6):  " << ascTable.contains(6)  << endl;
+    cout << "contains(42): " << ascTable.contains(42) << endl;
+    cout << "at(10):       " << ascTable.at(10)       << endl;
+
+    try {
+        ascTable.at(42);
+    } catch (const out_of_range& e) {
+        cout << "at(42):       excepcion -> " << e.what() << endl;
+    }
+
+    ascTable[6] += 100;
+    cout << "ascTable[6] += 100 -> at(6) = " << ascTable.at(6) << endl;
+
+    ascTable[42] = 52;   // clave nueva: operator[] la inserta
+    cout << "ascTable[42] = 52:\n" << ascTable << endl;
+
+    cout << "-- PRUEBAS DE REMOVE POR CLAVE --\n";
+    ascTable.remove(3);    // nodo con dos hijos
+    ascTable.remove(42);   // hoja
+    ascTable.remove(1000); // clave inexistente: no hace nada
+    cout << "Luego de remove(3), remove(42), remove(1000):\n" << ascTable << endl;
+    cout << "contains(3): " << ascTable.contains(3) << endl;
+
+    // --------------------------------------------------
+    // COPY / MOVE / CLEAR / LECTURA / VACIO (reutiliza helper de arboles)
+    // --------------------------------------------------
+
+    TestTreeLifecycle(ascTable, "HashTable", ascFilename);
 }

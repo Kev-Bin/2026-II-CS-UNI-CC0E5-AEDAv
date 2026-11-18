@@ -2,11 +2,11 @@
 #define __VECTOR_H__
 #include <initializer_list>
 #include <mutex>
-#include "Iterator.h"
-#include "GeneralNode.h"
+#include "../Iterator.h"
+#include "../GeneralNode.h"
 #include "../../foreach.h"
 #include "../../types.h" // Ref
-#include "Sequence.h"
+#include "../Sequence.h"
 
 using namespace std;
 
@@ -135,17 +135,40 @@ protected:
         m_capacity  = 0;
     }
 
-    void internalPushBack(const value_type& value, Ref ref) override { internalPushBack(new Node(value, ref)); }
-    
-    void internalPushBack(Node* nodePtr) override {
+    void internalPush(const value_type& value, Ref ref) override { this->internalPushBack(value, ref); }
+    void internalPushBack(const value_type& value, Ref ref) override {
         if (m_size == m_capacity)
             resize((m_capacity == 0) ? 10 : m_capacity * 2);
+        
+        m_data[m_size].setValue(value);
+        m_data[m_size].setRef(ref);
 
-        m_data[m_size] = *nodePtr;
         ++m_size;
     }
 
-    Parent& copy(const Vector& another) override {
+    void internalRemove(const value_type& value, Ref ref) override {
+        const size_t index = internalIndexOf(value, ref);
+        if (index == m_size)
+            return;
+
+        for (size_t i = index; i + 1 < m_size; ++i)
+            m_data[i] = m_data[i + 1];
+
+        --m_size;
+    }
+
+    size_t internalIndexOf(const value_type& value, Ref ref) {
+        size_t i = 0;
+
+        for(i; i < m_size; i++)
+            if(m_data[i].getValue() == value 
+                && m_data[i].getRef() == ref)
+                break;
+
+        return i;
+    }
+
+    Parent& internalCopy(const Vector& another) override {
         if (this != &another) {
             Parent::copy(another);
             m_capacity = another.m_capacity;
@@ -166,7 +189,7 @@ public:
     }
 
     Node pop_back() {
-        lock_guard<mutex> lock(m_mutex);
+        scoped_lock lock(m_mutex);
 
         if (m_size == 0) 
             throw std::out_of_range("Vector vacio");
@@ -183,11 +206,9 @@ public:
         return m_data[index];
     }
 
-    Node& operator[](size_t index) {
-        if (index >= m_size) 
-            throw std::out_of_range("Indice fuera de rango");
-            
-        return m_data[index];
+    size_t indexOf(const value_type& value, Ref ref) {
+        scoped_lock lock(m_mutex);
+        return internalIndexOf(value, ref);
     }
 
     Node& operator[] (size_t index) const {

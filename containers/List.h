@@ -31,19 +31,40 @@ protected:
     Node* m_pTail = nullptr;
     Node sentinel;
 
-    virtual void internalInsert(Node* newNode) = 0;
+    virtual void internalInsert(Node* newNode)      = 0;
+    virtual void connect(Node* prev, Node* next)    = 0;
 
     void internalInsert(const value_type& value, Ref ref) { internalInsert(new Node(value, ref, nullptr)); }
 
-    void internalPush(const value_type& value, Ref ref) { internalPushBack(const value_type& value, Ref ref);}
+    void internalPush(const value_type& value, Ref ref) override { this->internalPushBack(value, ref); }
     
-    void internalClear() override {
-        Parent::internalClear();
+    void internalRemove(const value_type& value, Ref ref) override {
+        ForwardIterator it = begin();
+        Node* previous  = nullptr;
+        
+        Node& toDelete  = this->FirstThat([&](Node& node) {
+            if(node.getValue() == value && node.getRef() == ref)
+                return true;
+            else
+                previous = &*it; //aplicar operator* y referenciar
+            ++it;
 
+            return false;
+        });
+
+        Node* next = &*(++it);
+        
+        connect(previous, next);
+        delete &toDelete;
+        --m_size;
+    }
+
+    void internalClear() override {
         this->ApplyFunction([](Node& node) { delete &node; });
         
         m_pRoot = nullptr;
         m_pTail = nullptr;
+        m_size  = 0;
     }
 
 public:

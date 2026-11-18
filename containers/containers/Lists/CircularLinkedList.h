@@ -1,6 +1,6 @@
 #ifndef __CIRCULARLINKEDLIST_H__
 #define __CIRCULARLINKEDLIST_H__
-#include "LinkedList.h"
+#include "linkedlist.h"
 
 template <typename Traits>
 class CircularLinkedList : 
@@ -32,5 +32,11 @@ protected:
         Parent::internalClear();
         sentinel.m_pNext = nullptr;
     };
+
+    void connect(Node* prev, Node* next) override {
+        Parent::connect(prev, next);
+        if(prev == nullptr)
+            sentinel.m_pNext = next;
+    }
 };
 #endif // __CIRCULARLINKEDLIST_H__

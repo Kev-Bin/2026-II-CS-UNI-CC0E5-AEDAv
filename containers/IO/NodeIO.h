@@ -1,11 +1,11 @@
 #ifndef __NODEIO_H__
 #define __NODEIO_H__
 
-#include "../types.h"
-#include "GeneralNode.h"
+#include "../../types.h"
+#include "../GeneralNode.h"
 
-template <typename T>
-std::ostream& operator << (std::ostream &os, const GeneralNode<T> &node) {
+template <typename T, typename Reference>
+std::ostream& operator << (std::ostream &os, const GeneralNode<T, Reference> &node) {
     
     os  << "(" 
         << node.getValue() 
@@ -16,12 +16,12 @@ std::ostream& operator << (std::ostream &os, const GeneralNode<T> &node) {
     return os;
 }
 
-template <typename T>
-std::istream& operator >> (std::istream &is, GeneralNode<T> &node){
-    Ref ref;
+template <typename T, typename Reference>
+std::istream& operator >> (std::istream &is, GeneralNode<T, Reference> &node){
+    Reference ref;
 
-    GeneralNode<T>::Delim       d;
-    GeneralNode<T>::value_type  value;
+    typename GeneralNode<T, Reference>::Delim       d;
+    typename GeneralNode<T, Reference>::value_type  value;
 
 
     if (!(is >> std::ws >> d) || d != '(') {
@@ -39,8 +39,8 @@ std::istream& operator >> (std::istream &is, GeneralNode<T> &node){
         return is;
     }
 
-    node.m_value    = value;
-    node.m_ref      = ref;
+    node.setValue(value);
+    node.setRef(ref);
 
     return is;
 }
