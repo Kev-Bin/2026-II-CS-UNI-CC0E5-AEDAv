@@ -801,7 +801,7 @@ void DemoMerkleTree() {
     tree.rcall(PrintNode<Node>, cout);
     cout << "]" << endl;
 
-    cout << "Solo hojas, en orden de insercion:\n\t[";
+    cout << "Solo hojas, en orden de indice:\n\t[";
     for (auto&& node : tree.inOrder())
         if (!node.hasLeft() && !node.hasRight())
             cout << node << " ";
@@ -829,23 +829,67 @@ void DemoMerkleTree() {
     cout << "Iguales: " << (tree.root() == reversed.root()) << endl;
 
     // --------------------------------------------------
-    // PUSH / REMOVE (reconstruyen el arbol)
+    // PUSH / UPDATE / REMOVE (la Ref es el indice de la hoja)
     // --------------------------------------------------
+
+    auto printChanges = [](const string& label, const Merkle::Changes& changes) {
+        cout << label << " (" << changes.size() << " hojas):\n";
+        for (size_t i = 0; i < changes.size(); ++i) {
+            const MerkleLeafChange& c = changes[i].getValue();
+            const char* kind = c.kind == MerkleChange::Added   ? "agregada"
+                             : c.kind == MerkleChange::Removed ? "eliminada"
+                             :                                   "modificada";
+            cout << "\thoja " << c.index << ": " << kind
+                 << "  " << c.before << " -> " << c.after << '\n';
+        }
+    };
 
     cout << "-- PRUEBAS DE PUSH (6 hojas: niveles pares) --\n";
     tree.push(60, 5);
     cout << tree << endl;
     printRoot("Raiz: ", tree);
 
-    cout << "-- PRUEBAS DE REMOVE --\n";
-    tree.remove(30, 2);
-    cout << "Luego de remove(30, 2):\n" << tree << endl;
-    printRoot("Raiz: ", tree);
+    cout << "-- FOTOGRAFIA (copia del arbol) --\n";
+    Merkle snapshot(tree);
+    printRoot("Raiz fotografiada: ", snapshot);
+
+    cout << "-- PRUEBAS DE UPDATE --\n";
+    cout << "update(20 -> 25, hoja 1): " << tree.update(20, 1, 25) << endl;
+    cout << "update(99 -> 1, hoja 0) con dato anterior incorrecto: "
+         << tree.update(99, 0, 1) << endl;
+
+    cout << "-- PRUEBAS DE REMOVE (deja una lapida) --\n";
+    tree.remove(40, 3);
+    cout << "Luego de remove(40, 3):\n" << tree << endl;
+    cout << "Hoja 3 eliminada: " << tree.isRemoved(3)
+         << " | hojas vivas: " << tree.leafCount()
+         << " | posiciones: " << tree.slotCount() << endl;
 
     Merkle::Hash before = tree.root();
     tree.remove(999, 9);
-    cout << "remove(999, 9) inexistente, raiz sin cambios: "
+    tree.remove(10, 4);
+    cout << "remove(999, 9) y remove(10, 4) no coinciden, raiz sin cambios: "
          << (tree.root() == before) << endl;
+
+    cout << "-- VERIFICACION POR HASH --\n";
+    cout << "verify(25, 1): " << tree.verify(25, 1)
+         << " | verify(20, 1): " << tree.verify(20, 1) << endl;
+
+    cout << "-- CAMBIOS DESDE LA FOTOGRAFIA --\n";
+    printChanges("Cambios", tree.changesSince(snapshot));
+
+    cout << "-- PUSH REUTILIZA LA LAPIDA --\n";
+    tree.push(70, 0);
+    cout << "Luego de push(70):\n" << tree << endl;
+    printChanges("Cambios", tree.changesSince(snapshot));
+
+    cout << "-- PUSH AL FINAL (cambia la cantidad de posiciones) --\n";
+    tree.push(80, 0);
+    printChanges("Cambios", tree.changesSince(snapshot));
+
+    cout << "-- SIN CAMBIOS --\n";
+    Merkle again(tree);
+    printChanges("Cambios", tree.changesSince(again));
 
     // --------------------------------------------------
     // COPY / MOVE / CLEAR / VACIO (reutiliza helpers de arboles)

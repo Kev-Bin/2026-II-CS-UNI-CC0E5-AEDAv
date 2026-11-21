@@ -1,6 +1,7 @@
 #ifndef __BINARYTREE_H__
 #define __BINARYTREE_H__
 
+#include <type_traits>
 #include "../../Container.h"
 #include "../vector.h"
 #include "../../../types.h"
@@ -297,17 +298,24 @@ protected:
 
     virtual void rebalance(Node*& root) {}
 
+    // Los algoritmos de BST guardan el dato tal cual en el nodo. Un arbol cuyo
+    // nodo guarda otra cosa (MerkleTree: hashes) redefine push/remove; como
+    // las virtuales se compilan igual, se excluyen con if constexpr.
+    static constexpr bool NodeStoresValue = std::is_same_v<value_type, typename Node::value_type>;
+
     void internalPush(const value_type& value, Ref ref) override { internalPush(value, ref, m_pRoot); }
 
     virtual void internalPush(const value_type& value, Ref ref, Node*& root) {
-        if (!root)
-            root = new Node(value, ref);
-        else if (m_comp(value, root->getValue()))
-            internalPush(value, ref, root->getLeft());
-        else
-            internalPush(value, ref, root->getRight());
+        if constexpr (NodeStoresValue) {
+            if (!root)
+                root = new Node(value, ref);
+            else if (m_comp(value, root->getValue()))
+                internalPush(value, ref, root->getLeft());
+            else
+                internalPush(value, ref, root->getRight());
 
-        rebalance(root);
+            rebalance(root);
+        }
     }
 
     void internalClear() override {
@@ -318,17 +326,19 @@ protected:
     void internalRemove(const value_type& value, Ref ref) override { internalRemove(value, ref, m_pRoot); }
 
     virtual void internalRemove(const value_type& value, Ref ref, Node*& root) {
-        if (!root) return;
+        if constexpr (NodeStoresValue) {
+            if (!root) return;
 
-        if (root->getValue() == value && root->getRef() == ref)
-            removeNode(root);
-        else if (m_comp(value, root->getValue()))
-            internalRemove(value, ref, root->getLeft());
-        else
-            internalRemove(value, ref, root->getRight());
+            if (root->getValue() == value && root->getRef() == ref)
+                removeNode(root);
+            else if (m_comp(value, root->getValue()))
+                internalRemove(value, ref, root->getLeft());
+            else
+                internalRemove(value, ref, root->getRight());
 
-        if (root) 
-            rebalance(root);
+            if (root)
+                rebalance(root);
+        }
     }
 
     void removeNode(Node*& root) {
