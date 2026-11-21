@@ -11,7 +11,7 @@ else
 EXE :=
 endif
 
-.PHONY: all run clean sheet sheet-run
+.PHONY: all run clean sheet sheet-run docs docs-clean
 
 all: $(TARGET)
 
@@ -35,6 +35,14 @@ sheet$(EXE): $(SHEET_DEPS)
 
 sheet-run: sheet$(EXE)
 	./sheet$(EXE)
+
+# Documentacion con Doxygen (salida en docs/html/index.html)
+docs:
+	mkdir -p docs
+	doxygen Doxyfile
+
+docs-clean:
+	rm -rf docs
 
 clean:
 	rm -f $(TARGET) sheet$(EXE)

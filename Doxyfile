@@ -1,0 +1,71 @@
+# Configuracion de Doxygen para el proyecto.
+# Solo se listan las opciones que cambian; el resto usa el valor por defecto.
+# Generar:  make docs   (o: doxygen Doxyfile)
+# Salida:   docs/html/index.html   (docs/ esta en .gitignore)
+
+#---------------------------------------------------------------------------
+# Proyecto
+#---------------------------------------------------------------------------
+PROJECT_NAME           = "AEDA Containers"
+PROJECT_BRIEF          = "Estructuras de datos genericas en C++ - CC0E5 UNI"
+OUTPUT_DIRECTORY       = docs
+OUTPUT_LANGUAGE        = Spanish
+
+#---------------------------------------------------------------------------
+# Entrada
+#---------------------------------------------------------------------------
+INPUT                  = README.md . containers
+RECURSIVE              = YES
+FILE_PATTERNS          = *.h *.hpp *.cpp *.md
+EXCLUDE                = docs .git .vscode "Script SQL"
+EXCLUDE_PATTERNS       = */docs/* */.git/*
+EXCLUDE_SYMBOLS        = __*_H__
+USE_MDFILE_AS_MAINPAGE = README.md
+INPUT_ENCODING         = UTF-8
+
+#---------------------------------------------------------------------------
+# Que se extrae
+#---------------------------------------------------------------------------
+EXTRACT_ALL            = YES
+EXTRACT_PRIVATE        = YES
+EXTRACT_STATIC         = YES
+EXTRACT_PRIV_VIRTUAL   = YES
+JAVADOC_AUTOBRIEF      = YES
+BUILTIN_STL_SUPPORT    = YES
+SOURCE_BROWSER         = YES
+INLINE_SOURCES         = NO
+
+# Etiqueta propia para la complejidad:  @complexity O(n)
+ALIASES                = "complexity=@par Complejidad:^^"
+
+#---------------------------------------------------------------------------
+# Advertencias
+#---------------------------------------------------------------------------
+# EXTRACT_ALL = YES oculta los avisos de "no documentado". Para usar Doxygen
+# como checklist, pon EXTRACT_ALL = NO temporalmente y revisa doxygen_warnings.log.
+WARN_IF_UNDOCUMENTED   = YES
+WARN_IF_DOC_ERROR      = YES
+WARN_NO_PARAMDOC       = YES
+WARN_LOGFILE           = docs/doxygen_warnings.log
+
+#---------------------------------------------------------------------------
+# Salida
+#---------------------------------------------------------------------------
+GENERATE_HTML          = YES
+GENERATE_TREEVIEW      = YES
+GENERATE_LATEX         = NO
+
+#---------------------------------------------------------------------------
+# Diagramas
+#---------------------------------------------------------------------------
+# Con HAVE_DOT = NO, Doxygen dibuja diagramas de herencia basicos.
+# Para obtener los grafos de includes y de colaboracion, instala Graphviz
+# (winget install Graphviz.Graphviz) y cambia HAVE_DOT a YES.
+HAVE_DOT               = NO
+CLASS_GRAPH            = YES
+COLLABORATION_GRAPH    = YES
+INCLUDE_GRAPH          = YES
+INCLUDED_BY_GRAPH      = YES
+TEMPLATE_RELATIONS     = YES
+DOT_IMAGE_FORMAT       = svg
+INTERACTIVE_SVG        = YES
