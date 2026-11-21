@@ -1,7 +1,7 @@
 #ifndef __AVLTREE_H__
 #define __AVLTREE_H__
 
-#include "BinaryTree.h"
+#include "BinarySearchTree.h"
 #include <algorithm>
 #include <initializer_list>
 #include <utility>
@@ -34,11 +34,11 @@ template <typename T, typename NodeT = AVLTreeNode<T>>
 struct AVLTreeDescTraits : BinaryTreeDescTraits<T, NodeT> {};
 
 template <typename Traits>
-class AVLTree : public BinaryTree<Traits> {
+class AVLTree : public BinarySearchTree<Traits> {
 
     public:
 
-        using Parent     = BinaryTree<Traits>;
+        using Parent     = BinarySearchTree<Traits>;
         using value_type = typename Parent::value_type;
         using Node       = typename Parent::Node;
 

@@ -13,7 +13,7 @@
 #include "containers/containers/Lists/DoublyLinkedList.h"
 #include "containers/containers/Lists/CircularDoublyLinkedList.h"
 #include "containers/containers/Heap.h"
-#include "containers/containers/Trees/BinaryTree.h"
+#include "containers/containers/Trees/BinarySearchTree.h"
 #include "containers/containers/Trees/AVLTree.h"
 #include "containers/containers/Trees/HashTable.h"
 #include "containers/containers/Trees/MerkleTree.h"
@@ -662,14 +662,14 @@ void TestTreeLifecycle(Tree& tree, const string& treeName, const string& filenam
     TestEmptyTree<Tree>();
 }
 
-void DemoBinaryTree() {
-    using IntAscTree  = BinaryTree<BinaryTreeAscTraits<TX>>;
-    using IntDescTree = BinaryTree<BinaryTreeDescTraits<TX>>;
+void DemoBinarySearchTree() {
+    using IntAscTree  = BinarySearchTree<BinaryTreeAscTraits<TX>>;
+    using IntDescTree = BinarySearchTree<BinaryTreeDescTraits<TX>>;
 
     DemoSearchTree<IntAscTree, IntDescTree>(
-        "BinaryTree",
-        "binarytree_asc.txt",
-        "binarytree_desc.txt"
+        "BinarySearchTree",
+        "bst_asc.txt",
+        "bst_desc.txt"
     );
 }
 

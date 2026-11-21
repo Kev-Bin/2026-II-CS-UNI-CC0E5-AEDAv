@@ -9,7 +9,7 @@ void DemoCircularLinkedList();
 void DemoDoublyLinkedList();
 void DemoCircularDoublyLinkedList();
 void DemoHeap();
-void DemoBinaryTree();
+void DemoBinarySearchTree();
 void DemoHashTable();
 void DemoMerkleTree();
 #endif // __DEMOS_H__

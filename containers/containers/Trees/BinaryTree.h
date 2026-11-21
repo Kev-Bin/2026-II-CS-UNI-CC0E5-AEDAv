@@ -1,7 +1,7 @@
 #ifndef __BINARYTREE_H__
 #define __BINARYTREE_H__
 
-#include <type_traits>
+#include <string>
 #include "../../Container.h"
 #include "../vector.h"
 #include "../../../types.h"
@@ -262,8 +262,13 @@ struct BinaryTreeAscTraits  : BinaryTreeTraits<AscendingTraits<T>, NodeT> {};
 template <typename T, typename NodeT = BinaryTreeNode<T>>
 struct BinaryTreeDescTraits : BinaryTreeTraits<DescendingTraits<T>, NodeT> {};
 
+// Arbol binario generico (abstracto): solo la estructura. Guarda la raiz,
+// recorre, copia, limpia e imprime, pero no decide donde se inserta ni que
+// se elimina: eso lo implementan las subclases.
+//   - BinarySearchTree: por orden (m_comp)       -> AVLTree -> HashTable
+//   - MerkleTree:       por posicion (indice)
 template <typename Traits>
-class BinaryTree : 
+class BinaryTree :
     public Container<Traits, BinaryTree<Traits>>,
     public BackwardIterable<Traits> {//toca quitar backward
 
@@ -296,76 +301,13 @@ protected:
 
     Node* m_pRoot = nullptr;
 
-    virtual void rebalance(Node*& root) {}
-
-    // Los algoritmos de BST guardan el dato tal cual en el nodo. Un arbol cuyo
-    // nodo guarda otra cosa (MerkleTree: hashes) redefine push/remove; como
-    // las virtuales se compilan igual, se excluyen con if constexpr.
-    static constexpr bool NodeStoresValue = std::is_same_v<value_type, typename Node::value_type>;
-
-    void internalPush(const value_type& value, Ref ref) override { internalPush(value, ref, m_pRoot); }
-
-    virtual void internalPush(const value_type& value, Ref ref, Node*& root) {
-        if constexpr (NodeStoresValue) {
-            if (!root)
-                root = new Node(value, ref);
-            else if (m_comp(value, root->getValue()))
-                internalPush(value, ref, root->getLeft());
-            else
-                internalPush(value, ref, root->getRight());
-
-            rebalance(root);
-        }
-    }
+    // internalPush / internalRemove quedan puras (de Container): donde va
+    // cada dato lo decide la subclase (BinarySearchTree: por orden,
+    // MerkleTree: por posicion).
 
     void internalClear() override {
         this->ApplyFunction([](Node& node) { delete &node; });
         m_pRoot = nullptr;
-    }
-
-    void internalRemove(const value_type& value, Ref ref) override { internalRemove(value, ref, m_pRoot); }
-
-    virtual void internalRemove(const value_type& value, Ref ref, Node*& root) {
-        if constexpr (NodeStoresValue) {
-            if (!root) return;
-
-            if (root->getValue() == value && root->getRef() == ref)
-                removeNode(root);
-            else if (m_comp(value, root->getValue()))
-                internalRemove(value, ref, root->getLeft());
-            else
-                internalRemove(value, ref, root->getRight());
-
-            if (root)
-                rebalance(root);
-        }
-    }
-
-    void removeNode(Node*& root) {
-        Node* toDelete = root;
-
-        if (!root->hasLeft())
-            root = root->getRight();
-        else if (!root->hasRight())
-            root = root->getLeft();
-        else {
-            Node* pred = extractMax(toDelete->getLeft());
-            pred->setLeft(toDelete->getLeft());
-            pred->setRight(toDelete->getRight());
-            root = pred;
-        }
-        delete toDelete;
-    }
-
-    Node* extractMax(Node*& root) {
-        if (root->hasRight()) {
-            Node* m = extractMax(root->getRight());
-            rebalance(root);
-            return m;
-        }
-        Node* m = root;
-        root = root->getLeft();
-        return m;
     }
 
     Parent& internalCopy(const BinaryTree& another) override { 
@@ -379,18 +321,28 @@ protected:
         return *this;
     }
 
-    std::ostream& printTree(std::ostream& os, Node* node, const char* connector = "\t", size_t lvl = 0) const {
-        if (!node) 
+    std::ostream& printTree(std::ostream& os) const {
+        if (!m_pRoot)
             return os;
 
-        printTree(os, node->getRight(),"┌──", lvl + 1);
-
-        for (size_t i = 0; i < lvl; i++) os << "\t";  
-        os << connector <<*node << '\n';
-
-        printTree(os, node->getLeft(), "└──", lvl + 1);
+        printSubtree(os, m_pRoot->getRight(), "", true);
+        os << *m_pRoot << '\n';
+        printSubtree(os, m_pRoot->getLeft(),  "", false);
 
         return os;
+    }
+
+    // 'prefix' es la sangria acumulada: un bloque de 4 caracteres por nivel,
+    // "│   " si la linea hacia el padre pasa por esa columna, "    " si no.
+    // La linea pasa cuando el nieto queda entre su padre y el abuelo: el hijo
+    // izquierdo de un nodo derecho (o el derecho de uno izquierdo).
+    void printSubtree(std::ostream& os, const Node* node, const std::string& prefix, bool isRight) const {
+        if (!node)
+            return;
+
+        printSubtree(os, node->getRight(), prefix + (isRight ? "    " : "│   "), true);
+        os << prefix << (isRight ? "┌── " : "└── ") << *node << '\n';
+        printSubtree(os, node->getLeft(),  prefix + (isRight ? "│   " : "    "), false);
     }
 
 public:
@@ -398,10 +350,9 @@ public:
 
     BinaryTree(const BinaryTree& another) : Parent() { this->copy(another); }
 
-    BinaryTree(initializer_list<pair<value_type, Ref>> values) { 
-        for (const auto& value : values) 
-            push(value.first, value.second); 
-    }
+    // Sin constructor con initializer_list: llamaria a push (virtual pura)
+    // durante la construccion de una clase abstracta. Cada subclase tiene
+    // el suyo.
 
     BinaryTree(BinaryTree&& another) : Parent() {
         std::scoped_lock lock(another.m_mutex);
@@ -435,7 +386,7 @@ public:
         
     friend std::ostream& operator<<(std::ostream& os, const BinaryTree<Traits>& tree) {
         std::scoped_lock lock(tree.m_mutex);
-        return tree.printTree(os, tree.m_pRoot);
+        return tree.printTree(os);
     }
 
 };

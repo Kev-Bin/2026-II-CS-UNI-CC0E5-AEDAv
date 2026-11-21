@@ -14,7 +14,7 @@ int main() {
     DemoDoublyLinkedList();
     DemoCircularDoublyLinkedList();
     DemoHeap();
-    DemoBinaryTree();
+    DemoBinarySearchTree();
     DemoHashTable();
     DemoMerkleTree();
     return 0;
