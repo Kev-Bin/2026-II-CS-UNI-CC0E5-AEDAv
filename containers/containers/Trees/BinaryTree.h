@@ -301,10 +301,6 @@ protected:
 
     Node* m_pRoot = nullptr;
 
-    // internalPush / internalRemove quedan puras (de Container): donde va
-    // cada dato lo decide la subclase (BinarySearchTree: por orden,
-    // MerkleTree: por posicion).
-
     void internalClear() override {
         this->ApplyFunction([](Node& node) { delete &node; });
         m_pRoot = nullptr;
