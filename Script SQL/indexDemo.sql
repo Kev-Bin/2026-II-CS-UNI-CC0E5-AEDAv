@@ -66,6 +66,9 @@ SELECT *
 FROM usuarios
 WHERE correo = 'usuario50000@correo.com';
 
+CREATE INDEX idx_usuarios_edad
+ON usuarios USING BTREE (edad);
+
 SELECT *
 FROM usuarios
 WHERE edad BETWEEN 20 AND 25;

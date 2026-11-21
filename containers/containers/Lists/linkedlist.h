@@ -103,6 +103,12 @@ protected:
     }
 
     void connect(Node* prev, Node* next) override {
+        // Si se quito el ultimo nodo, el anterior pasa a ser la cola (o
+        // nullptr si la lista quedo vacia). Sin esto m_pTail apuntaria al
+        // nodo borrado y el siguiente pushBack escribiria en memoria liberada.
+        if (next == &sentinel)
+            m_pTail = prev;
+
         if (prev == nullptr) {
             m_pRoot = next;
             return;
