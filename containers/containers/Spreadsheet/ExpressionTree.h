@@ -67,19 +67,19 @@ enum OpIndex : std::size_t {
     OP_COUNT            // cantidad de operaciones (tamaño de las tablas)
 };
 
-inline double OpAdd(double a, double b) { return a + b; }
-inline double OpSub(double a, double b) { return a - b; }
-inline double OpMul(double a, double b) { return a * b; }
-inline double OpDiv(double a, double b) {
+double OpAdd(double a, double b) { return a + b; }
+double OpSub(double a, double b) { return a - b; }
+double OpMul(double a, double b) { return a * b; }
+double OpDiv(double a, double b) {
     if (b == 0) throw FormulaError("Division entre cero", std::string::npos, "#DIV/0");
     return a / b;
 }
 
-inline constexpr BinaryOperation Operations[OP_COUNT] = { OpAdd, OpSub, OpMul, OpDiv };
-inline constexpr char            OpSymbols [OP_COUNT] = { '+',   '-',   '*',   '/'   };
+constexpr BinaryOperation Operations[OP_COUNT] = { OpAdd, OpSub, OpMul, OpDiv };
+constexpr char            OpSymbols [OP_COUNT] = { '+',   '-',   '*',   '/'   };
 
 // Simbolo -> indice en la tabla (OP_COUNT si no es un operador).
-inline std::size_t OpIndexOf(char symbol) {
+std::size_t OpIndexOf(char symbol) {
     for (std::size_t i = 0; i < OP_COUNT; ++i)
         if (OpSymbols[i] == symbol) return i;
     return OP_COUNT;
@@ -123,7 +123,7 @@ struct Token {
     }
 };
 
-inline std::ostream& operator<<(std::ostream& os, const Token& t) { return os << t.toString(); }
+std::ostream& operator<<(std::ostream& os, const Token& t) { return os << t.toString(); }
 
 // --------------------------- ExpressionTree -------------------------------
 
